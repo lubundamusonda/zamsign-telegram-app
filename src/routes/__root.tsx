@@ -1,15 +1,61 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
+import { retrieveLaunchParams } from '@tma.js/sdk-react'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 import BottomBar from '../components/BottomBar'
-
+import type { TelegramContext } from '../router' // Import the interface
 import appCss from '../styles.css?url'
+import { init as initTMA } from '../init.ts'
 
 const THEME_INIT_SCRIPT = `(function(){try{var stored=window.localStorage.getItem('theme');var mode=(stored==='light'||stored==='dark'||stored==='auto')?stored:'light';var prefersDark=window.matchMedia('(prefers-color-scheme: dark)').matches;var resolved=mode==='auto'?(prefersDark?'dark':'light'):mode;var root=document.documentElement;root.classList.remove('light','dark');root.classList.add(resolved);if(mode==='auto'){root.removeAttribute('data-theme')}else{root.setAttribute('data-theme',mode)}root.style.colorScheme=resolved;}catch(e){}})();`
 
-export const Route = createRootRoute({
+// Global TMA INIT Variable
+// We need this to prevent the telegram sdk from initializing
+// everytime the router gets refreshed
+
+let isTmaInitialized = false;
+
+export const Route = createRootRouteWithContext<TelegramContext>()({
+	beforeLoad: async () => {
+    if (typeof window === 'undefined') return { launchParams: undefined };
+
+	
+	if (isTmaInitialized) {
+      try {
+        return { launchParams: retrieveLaunchParams() };
+      } catch {
+        return { launchParams: undefined };
+      }
+    }
+    try {
+    if (import.meta.env.DEV) {
+      await import('../mockEnv.ts');
+    }
+		
+      const lp = retrieveLaunchParams();
+      
+      // Initialize TMA logic
+      await initTMA({
+        debug: import.meta.env.DEV,
+        eruda: false,
+        mockForMacOS: lp.tgWebAppPlatform === 'macos',
+      });
+	  
+	  isTmaInitialized = true;
+      return { launchParams: lp };
+    } catch (e: any) {
+      // If it's just a CSS binding error, we can actually ignore it 
+      // and proceed because the app is otherwise functional.
+      if (e?.name === 'CSSVarsBoundError') {
+        return { launchParams: retrieveLaunchParams() };
+      }
+
+      console.error("TMA Init failed", e);
+      throw e; // Let errorComponent handle real failures
+    }
+  },
   head: () => ({
     meta: [
       {
@@ -30,8 +76,27 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  shellComponent: RootDocument,
+  shellComponent: RootComponent,
+  errorComponent: ({ error }) => {
+    return <p>Environment Unsupported{JSON.stringify(error)}</p>
+    },
+  notFoundComponent: () => {
+  	return <p>Page not found</p>
+	},
 })
+
+function RootComponent({ children }: { children: React.ReactNode }) {
+  return (
+    <RootDocument>
+        <Header />
+		<div className="min-h-screen"> 
+        {children}
+      </div>
+        <Footer />
+		<BottomBar />
+    </RootDocument>
+  )
+}
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
@@ -40,12 +105,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <HeadContent />
       </head>
-      <body className="font-sans antialiased [overflow-wrap:anywhere] selection:bg-[rgba(79,184,178,0.24)]">
-        <Header />
+      <body className="font-sans antialiased h-full selection:bg-[rgba(79,184,178,0.24)]">
         {children}
-        <Footer />
-		<BottomBar />
-        <TanStackDevtools
+		  <TanStackDevtools
           config={{
             position: 'bottom-right',
           }}
@@ -61,3 +123,4 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     </html>
   )
 }
+
