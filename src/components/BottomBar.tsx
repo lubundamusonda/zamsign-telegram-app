@@ -8,6 +8,7 @@ export default function BottomBar() {
         <div className="order-3 flex w-full flex-wrap justify-center items-center gap-x-4 gap-y-1 pb-1">
 		  <Link
             to="/"
+			suppressHydrationWarning
             className="nav-link"
             activeProps={{ className: 'nav-link is-active' }}
           >
@@ -18,6 +19,7 @@ export default function BottomBar() {
 		  
           <Link
             to="/about"
+			suppressHydrationWarning
             className="nav-link"
             activeProps={{ className: 'nav-link is-active' }}
           >
