@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="400" src="public/logo.svg" alt="ZamSign Logo">
+  <img width="180" src="public/logo.svg" alt="ZamSign Logo">
 </p>
 
 <h1 align="center">ZamSign Telegram App</h1>
