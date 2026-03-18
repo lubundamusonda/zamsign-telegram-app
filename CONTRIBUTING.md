@@ -12,7 +12,7 @@ To run this application:
 
 ```bash
 pnpm install
-pnpm dev
+pnpm dev:https
 ```
 
 # Building For Production
